@@ -1,5 +1,4 @@
 # LIN
-===============
 Arquitectura interna de Linux y Android (Curso 15/16 Facultad de Informática UCM)
 
 Profesor: Juan Carlos Sáez Alcaide
