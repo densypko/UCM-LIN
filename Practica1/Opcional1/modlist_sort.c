@@ -58,18 +58,23 @@ void cleanup(void){
 }
 
 int cmp(void *priv, struct list_head *a, struct list_head *b) {
+  int ret=-2;
+  
   struct list_item *itemA = NULL; 
   struct list_item *itemB = NULL; 
+
   itemA = list_entry(a, struct list_item, links);
   itemB = list_entry(b, struct list_item, links);
 
   if((itemA != NULL) || (itemB != NULL)) {
-    if(itemA->data <= itemB->data)
-      return -1;
-    else
-      return 1;
+    if(itemA->data < itemB->data)
+      ret = -1;
+    else if(itemA->data > itemB->data)
+      ret = 1;
+    else 
+      ret = 0;
   }
-  return -2;
+  return ret;
 }
 
 
@@ -117,11 +122,23 @@ static ssize_t modlist_write(struct file *filp, const char __user *buf, size_t l
         vfree(item);
       }
     }
-  }else if( sscanf(kbuf,"remove %d",&num) == 1) {
-
   }else if ( strcmp(kbuf,"cleanup\n") == 0){ // strcmp() return : 0 -> si son iguales 
     cleanup();
   }else if(strcmp(kbuf,"sort\n") == 0) {
+    /**
+     * list_sort - sort a list
+     * @priv: private data, opaque to list_sort(), passed to @cmp
+     * @head: the list to sort
+     * @cmp: the elements comparison function
+     *
+     * This function implements "merge sort", which has O(nlog(n))
+     * complexity.
+     *
+     * The comparison function @cmp must return a negative value if @a
+     * should sort before @b, and a positive value if @a should sort after
+     * @b. If @a and @b are equivalent, and their original relative
+     * ordering is to be preserved, @cmp must return 0.
+    */
     list_sort(NULL, &my_list, *cmp);
   }else{
     printk(KERN_INFO "ERROR: comando no valido!!!\n");
