@@ -1,0 +1,17 @@
+=====================
+INSTRUCCIONES
+=====================
+
+He compilado todo el proyecto generando los ficheros .deb correspondientes
+que están listos para ser instalados y reiniciar.
+
+Además existen 3 ficheros:
+
+  --"mysyscall.c": Fichero utilizado para crear la nueva funcionalidad
+  --"pr.c": Código de prueba para comprobar la funcionalidad una vez instalado
+	    el kernel
+  --"Makefile": Fichero para compilar más rapidamente el código de prueba
+
+=======================
+markdelapuerta & Denis
+=======================
