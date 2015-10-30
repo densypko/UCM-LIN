@@ -1,0 +1,476 @@
+kernel@debian:~$ sudo -s
+[sudo] password for kernel: 
+(reverse-i-search)`moun': mount -t vmhgfs .host:/shared /root/^Cunt/
+root@debian:/home/kernel# man debugfs
+root@debian:/home/kernel# mount -t debugfs /sys/kernel/debug
+Usage: mount -V                 : print version
+       mount -h                 : print this help
+       mount                    : list mounted filesystems
+       mount -l                 : idem, including volume labels
+So far the informational part. Next the mounting.
+The command is `mount [-t fstype] something somewhere'.
+Details found in /etc/fstab may be omitted.
+       mount -a [-t|-O] ...     : mount all stuff from /etc/fstab
+       mount device             : mount device at the known place
+       mount directory          : mount known device here
+       mount -t type dev dir    : ordinary mount command
+Note that one does not really mount a device, one mounts
+a filesystem (of the given type) found on the device.
+One can also mount an already visible directory tree elsewhere:
+       mount --bind olddir newdir
+or move a subtree:
+       mount --move olddir newdir
+One can change the type of mount containing the directory dir:
+       mount --make-shared dir
+       mount --make-slave dir
+       mount --make-private dir
+       mount --make-unbindable dir
+One can change the type of all the mounts in a mount subtree
+containing the directory dir:
+       mount --make-rshared dir
+       mount --make-rslave dir
+       mount --make-rprivate dir
+       mount --make-runbindable dir
+A device can be given by name, say /dev/hda1 or /dev/cdrom,
+or by label, using  -L label  or by uuid, using  -U uuid .
+Other options: [-nfFrsvw] [-o options] [-p passwdfd].
+For many more details, say  man 8 mount .
+root@debian:/home/kernel# mount -t debugfs debugfs /sys/kernel/debug
+root@debian:/home/kernel# cd /sys/kernel/debug/
+root@debian:/sys/kernel/debug# ls
+acpi  boot_params  gpio  kprobes  regmap     sched_features  suspend_stats  usb		    x86
+bdi   dma_buf	   hid	 mce	  regulator  sleep_time      tracing	    wakeup_sources
+root@debian:/sys/kernel/debug# cd tracing/
+root@debian:/sys/kernel/debug/tracing# ls
+available_events	    enabled_functions	      max_graph_depth  set_ftrace_filter   stack_trace	       trace_stat
+available_filter_functions  events		      options	       set_ftrace_notrace  stack_trace_filter  tracing_cpumask
+available_tracers	    free_buffer		      per_cpu	       set_ftrace_pid	   trace	       tracing_max_latency
+buffer_size_kb		    function_profile_enabled  printk_formats   set_graph_function  trace_clock	       tracing_on
+buffer_total_size_kb	    instances		      README	       set_graph_notrace   trace_marker        tracing_thresh
+current_tracer		    kprobe_events	      saved_cmdlines   snapshot		   trace_options       uprobe_events
+dyn_ftrace_total_info	    kprobe_profile	      set_event        stack_max_size	   trace_pipe	       uprobe_profile
+root@debian:/sys/kernel/debug/tracing# echo 0 > tracing_on 
+root@debian:/sys/kernel/debug/tracing# cat available_tracers 
+blk function_graph wakeup_dl wakeup_rt wakeup irqsoff function nop
+root@debian:/sys/kernel/debug/tracing# echo function_graph > current_tracer 
+root@debian:/sys/kernel/debug/tracing# cat available_filter_functions | grep ledctl
+SyS_ledctl
+root@debian:/sys/kernel/debug/tracing# echo SyS_ledctl > set_graph_function 
+root@debian:/sys/kernel/debug/tracing# echo 1 > tracing_i
+bash: tracing_i: Permiso denegado
+root@debian:/sys/kernel/debug/tracing# echo 1 > tracing_on 
+root@debian:/sys/kernel/debug/tracing# cat trace_pipe 
+  1)               |  SyS_ledctl() {
+  1)               |    get_kbd_driver_handler() {
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.085 us    |          _raw_spin_lock();
+  1)   0.345 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.113 us    |              _raw_spin_lock_irqsave();
+  1)   0.078 us    |              _raw_spin_unlock_irqrestore();
+  1)   1.033 us    |            }
+  1)   1.582 us    |          }
+  1)               |          console_unlock() {
+  1)   0.068 us    |            _raw_spin_lock_irqsave();
+  1)   0.084 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.070 us    |            _raw_spin_lock_irqsave();
+  1)   0.054 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   1.288 us    |                print_time.part.6();
+  1)   1.777 us    |              }
+  1)               |              print_prefix() {
+  1)   0.915 us    |                print_time.part.6();
+  1)   1.378 us    |              }
+  1)   4.349 us    |            }
+  1)   0.052 us    |            log_next();
+  1)   0.157 us    |            call_console_drivers.constprop.24();
+  1)   0.068 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.070 us    |              _raw_spin_lock_irqsave();
+  1)   0.083 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.993 us    |            }
+  1)   0.066 us    |            _raw_spin_lock();
+  1)   0.080 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.318 us    |            wake_up_klogd();
+  1) + 11.675 us   |          }
+  1) + 17.013 us   |        }
+  1) + 17.846 us   |      }
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.065 us    |          _raw_spin_lock();
+  1)   0.153 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.068 us    |              _raw_spin_lock_irqsave();
+  1)   0.081 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.956 us    |            }
+  1)   1.413 us    |          }
+  1)               |          console_unlock() {
+  1)   0.067 us    |            _raw_spin_lock_irqsave();
+  1)   0.085 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.073 us    |            _raw_spin_lock_irqsave();
+  1)   0.052 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   0.347 us    |                print_time.part.6();
+  1)   0.795 us    |              }
+  1)               |              print_prefix() {
+  1)   0.444 us    |                print_time.part.6();
+  1)   0.896 us    |              }
+  1)   2.626 us    |            }
+  1)   0.054 us    |            log_next();
+  1)   0.055 us    |            call_console_drivers.constprop.24();
+  1)   0.072 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.068 us    |              _raw_spin_lock_irqsave();
+  1)   0.083 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.954 us    |            }
+  1)   0.067 us    |            _raw_spin_lock();
+  1)   0.318 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.210 us    |            wake_up_klogd();
+  1) ! 121.558 us  |          }
+  1) ! 125.613 us  |        }
+  1) ! 126.096 us  |      }
+  1) ! 145.391 us  |    }
+  1)   0.078 us    |    check();
+  1)               |    vt_ioctl() {
+  1)   0.053 us    |      vc_cons_allocated();
+  1)               |      capable() {
+  1)               |        ns_capable() {
+  1)               |          security_capable() {
+  1)   0.098 us    |            cap_capable();
+  1)   0.751 us    |          }
+  1)   1.607 us    |        }
+  1)   2.150 us    |      }
+  1)   0.177 us    |      vt_do_kdskled();
+  1)   4.551 us    |    }
+  1) ! 152.183 us  |  }
+
+
+^C
+root@debian:/sys/kernel/debug/tracing# cat trace_pipe 
+  1)               |  SyS_ledctl() {
+  1)               |    get_kbd_driver_handler() {
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.072 us    |          _raw_spin_lock();
+  1)   0.375 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.061 us    |              _raw_spin_lock_irqsave();
+  1)   0.065 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.974 us    |            }
+  1)   1.437 us    |          }
+  1)               |          console_unlock() {
+  1)   0.057 us    |            _raw_spin_lock_irqsave();
+  1)   0.064 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.056 us    |            _raw_spin_lock_irqsave();
+  1)   0.049 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   1.449 us    |                print_time.part.6();
+  1)   1.932 us    |              }
+  1)               |              print_prefix() {
+  1)   0.919 us    |                print_time.part.6();
+  1)   1.378 us    |              }
+  1)   4.452 us    |            }
+  1)   0.053 us    |            log_next();
+  1)   0.159 us    |            call_console_drivers.constprop.24();
+  1)   0.054 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.056 us    |              _raw_spin_lock_irqsave();
+  1)   0.065 us    |              _raw_spin_unlock_irqrestore();
+  1)   1.002 us    |            }
+  1)   0.050 us    |            _raw_spin_lock();
+  1)   0.068 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.258 us    |            wake_up_klogd();
+  1) + 11.683 us   |          }
+  1) + 17.115 us   |        }
+  1) + 17.828 us   |      }
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.052 us    |          _raw_spin_lock();
+  1)   0.168 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.055 us    |              _raw_spin_lock_irqsave();
+  1)   0.065 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.941 us    |            }
+  1)   1.380 us    |          }
+  1)               |          console_unlock() {
+  1)   0.054 us    |            _raw_spin_lock_irqsave();
+  1)   0.061 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.059 us    |            _raw_spin_lock_irqsave();
+  1)   0.045 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   0.342 us    |                print_time.part.6();
+  1)   0.786 us    |              }
+  1)               |              print_prefix() {
+  1)   0.509 us    |                print_time.part.6();
+  1)   0.960 us    |              }
+  1)   2.678 us    |            }
+  1)   0.044 us    |            log_next();
+  1)   0.065 us    |            call_console_drivers.constprop.24();
+  1)   0.057 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.053 us    |              _raw_spin_lock_irqsave();
+  1)   0.066 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.945 us    |            }
+  1)   0.048 us    |            _raw_spin_lock();
+  1)   0.062 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.097 us    |            wake_up_klogd();
+  1)   9.765 us    |          }
+  1) + 13.776 us   |        }
+  1) + 14.203 us   |      }
+  1) + 33.069 us   |    }
+  1)   0.081 us    |    check();
+  1)               |    vt_ioctl() {
+  1)   0.043 us    |      vc_cons_allocated();
+  1)               |      capable() {
+  1)               |        ns_capable() {
+  1)               |          security_capable() {
+  1)   0.083 us    |            cap_capable();
+  1)   0.674 us    |          }
+  1)   1.173 us    |        }
+  1)   1.699 us    |      }
+  1)   0.065 us    |      vt_do_kdskled();
+  1)   3.908 us    |    }
+  1) + 39.435 us   |  }
+ ------------------------------------------
+  1)  ledsctl-4691  =>  ledsctl-4693 
+ ------------------------------------------
+
+  1)               |  SyS_ledctl() {
+  1)               |    get_kbd_driver_handler() {
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.085 us    |          _raw_spin_lock();
+  1)   0.354 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.090 us    |              _raw_spin_lock_irqsave();
+  1)   0.087 us    |              _raw_spin_unlock_irqrestore();
+  1)   1.045 us    |            }
+  1)   1.530 us    |          }
+  1)               |          console_unlock() {
+  1)   0.057 us    |            _raw_spin_lock_irqsave();
+  1)   0.078 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.070 us    |            _raw_spin_lock_irqsave();
+  1)   0.052 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   1.164 us    |                print_time.part.6();
+  1)   1.637 us    |              }
+  1)               |              print_prefix() {
+  1)   0.890 us    |                print_time.part.6();
+  1)   1.369 us    |              }
+  1)   4.141 us    |            }
+  1)   0.050 us    |            log_next();
+  1)   0.083 us    |            call_console_drivers.constprop.24();
+  1)   0.052 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.050 us    |              _raw_spin_lock_irqsave();
+  1)   0.063 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.972 us    |            }
+  1)   0.051 us    |            _raw_spin_lock();
+  1)   0.061 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.247 us    |            wake_up_klogd();
+  1) + 11.995 us   |          }
+  1) + 16.923 us   |        }
+  1) + 17.638 us   |      }
+  1)               |      printk() {
+  1)               |        vprintk_emit() {
+  1)   0.055 us    |          _raw_spin_lock();
+  1)   0.140 us    |          log_store();
+  1)               |          console_trylock() {
+  1)               |            down_trylock() {
+  1)   0.054 us    |              _raw_spin_lock_irqsave();
+  1)   0.066 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.937 us    |            }
+  1)   1.421 us    |          }
+  1)               |          console_unlock() {
+  1)   0.053 us    |            _raw_spin_lock_irqsave();
+  1)   0.061 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.057 us    |            _raw_spin_lock_irqsave();
+  1)   0.048 us    |            log_from_idx();
+  1)               |            msg_print_text() {
+  1)               |              print_prefix() {
+  1)   0.396 us    |                print_time.part.6();
+  1)   0.849 us    |              }
+  1)               |              print_prefix() {
+  1)   0.518 us    |                print_time.part.6();
+  1)   0.973 us    |              }
+  1)   2.757 us    |            }
+  1)   0.043 us    |            log_next();
+  1)   0.065 us    |            call_console_drivers.constprop.24();
+  1)   0.056 us    |            _raw_spin_lock_irqsave();
+  1)               |            up() {
+  1)   0.053 us    |              _raw_spin_lock_irqsave();
+  1)   0.066 us    |              _raw_spin_unlock_irqrestore();
+  1)   0.923 us    |            }
+  1)   0.048 us    |            _raw_spin_lock();
+  1)   0.065 us    |            _raw_spin_unlock_irqrestore();
+  1)   0.081 us    |            wake_up_klogd();
+  1)   9.049 us    |          }
+  1) + 13.087 us   |        }
+  1) + 13.520 us   |      }
+  1) + 32.149 us   |    }
+  1)   0.074 us    |    check();
+  1)               |    vt_ioctl() {
+  1)   0.057 us    |      vc_cons_allocated();
+  1)               |      capable() {
+  1)               |        ns_capable() {
+  1)               |          security_capable() {
+  1)   0.112 us    |            cap_capable();
+  1)   0.714 us    |          }
+  1)   1.219 us    |        }
+  1)   1.731 us    |      }
+  1)   0.063 us    |      vt_do_kdskled();
+  1)   3.859 us    |    }
+  1) + 38.296 us   |  }
+  0)               |  SyS_ledctl() {
+  0)               |    get_kbd_driver_handler() {
+  0)               |      printk() {
+  0)               |        vprintk_emit() {
+  0)   0.064 us    |          _raw_spin_lock();
+  0)   0.347 us    |          log_store();
+  0)               |          console_trylock() {
+  0)               |            down_trylock() {
+  0)   0.068 us    |              _raw_spin_lock_irqsave();
+  0)   0.080 us    |              _raw_spin_unlock_irqrestore();
+  0)   0.966 us    |            }
+  0)   1.484 us    |          }
+  0)               |          console_unlock() {
+  0)   0.051 us    |            _raw_spin_lock_irqsave();
+  0)   0.061 us    |            _raw_spin_unlock_irqrestore();
+  0)   0.050 us    |            _raw_spin_lock_irqsave();
+  0)   0.047 us    |            log_from_idx();
+  0)               |            msg_print_text() {
+  0)               |              print_prefix() {
+  0)   1.148 us    |                print_time.part.6();
+  0)   1.615 us    |              }
+  0)               |              print_prefix() {
+  0)   0.832 us    |                print_time.part.6();
+  0)   1.282 us    |              }
+  0)   3.998 us    |            }
+  0)   0.047 us    |            log_next();
+  0)   0.085 us    |            call_console_drivers.constprop.24();
+  0)   0.051 us    |            _raw_spin_lock_irqsave();
+  0)               |            up() {
+  0)   0.054 us    |              _raw_spin_lock_irqsave();
+  0)   0.062 us    |              _raw_spin_unlock_irqrestore();
+  0)   0.928 us    |            }
+  0)   0.052 us    |            _raw_spin_lock();
+  0)   0.064 us    |            _raw_spin_unlock_irqrestore();
+  0)   0.240 us    |            wake_up_klogd();
+  0) + 10.650 us   |          }
+  0) + 15.562 us   |        }
+  0) + 16.283 us   |      }
+  0)               |      printk() {
+  0)               |        vprintk_emit() {
+  0)   0.046 us    |          _raw_spin_lock();
+  0)   0.140 us    |          log_store();
+  0)               |          console_trylock() {
+  0)               |            down_trylock() {
+  0)   0.049 us    |              _raw_spin_lock_irqsave();
+  0)   0.064 us    |              _raw_spin_unlock_irqrestore();
+  0)   0.881 us    |            }
+  0)   1.276 us    |          }
+  0)               |          console_unlock() {
+  0)   0.049 us    |            _raw_spin_lock_irqsave();
+  0)   0.064 us    |            _raw_spin_unlock_irqrestore();
+  0)   0.054 us    |            _raw_spin_lock_irqsave();
+  0)   0.045 us    |            log_from_idx();
+  0)               |            msg_print_text() {
+  0)               |              print_prefix() {
+  0)   0.386 us    |                print_time.part.6();
+  0)   0.810 us    |              }
+  0)               |              print_prefix() {
+  0)   0.394 us    |                print_time.part.6();
+  0)   0.822 us    |              }
+  0)   2.538 us    |            }
+  0)   0.045 us    |            log_next();
+  0)   0.047 us    |            call_console_drivers.constprop.24();
+  0)   0.056 us    |            _raw_spin_lock_irqsave();
+  0)               |            up() {
+  0)   0.052 us    |              _raw_spin_lock_irqsave();
+  0)   0.064 us    |              _raw_spin_unlock_irqrestore();
+  0)   0.881 us    |            }
+  0)   0.049 us    |            _raw_spin_lock();
+  0)   0.062 us    |            _raw_spin_unlock_irqrestore();
+  0)   0.078 us    |            wake_up_klogd();
+  0)   9.251 us    |          }
+  0) + 12.844 us   |        }
+  0) + 13.257 us   |      }
+  0) + 30.513 us   |    }
+  0)   0.074 us    |    check();
+  0)               |    vt_ioctl() {
+  0)   0.054 us    |      vc_cons_allocated();
+  0)               |      capable() {
+  0)               |        ns_capable() {
+  0)               |          security_capable() {
+  0)   0.080 us    |            cap_capable();
+  0)   0.660 us    |          }
+  0)   1.134 us    |        }
+  0)   1.582 us    |      }
+  0)               |      vt_do_kdskled() {
+  0)               |        setledstate() {
+  0)   0.058 us    |          _raw_spin_lock_irqsave();
+  0)               |          __tasklet_schedule() {
+  0)   0.054 us    |            __raise_softirq_irqoff();
+  0)               |            wakeup_softirqd() {
+  0)               |              wake_up_process() {
+  0)               |                try_to_wake_up() {
+  0)   0.127 us    |                  _raw_spin_lock_irqsave();
+  0)   0.236 us    |                  task_waking_fair();
+  0)   0.109 us    |                  select_task_rq_fair();
+  0)   0.047 us    |                  cpus_share_cache();
+  0)   0.055 us    |                  _raw_spin_lock();
+  0)               |                  ttwu_do_activate.constprop.99() {
+  0)               |                    activate_task() {
+  0)               |                      enqueue_task() {
+  0)   0.138 us    |                        update_rq_clock();
+  0)               |                        enqueue_task_fair() {
+  0)               |                          update_curr() {
+  0)   0.070 us    |                            update_min_vruntime();
+  0)   0.164 us    |                            cpuacct_charge();
+  0)   1.342 us    |                          }
+  0)   0.048 us    |                          __compute_runnable_contrib.part.56();
+  0)   0.123 us    |                          update_cfs_rq_blocked_load();
+  0)   0.089 us    |                          account_entity_enqueue();
+  0)   0.094 us    |                          update_cfs_shares();
+  0)   0.169 us    |                          __enqueue_entity();
+  0)   0.046 us    |                          hrtick_update();
+  0)   5.430 us    |                        }
+  0)   6.476 us    |                      }
+  0)   6.936 us    |                    }
+  0)               |                    ttwu_do_wakeup() {
+  0)               |                      check_preempt_curr() {
+  0)               |                        check_preempt_wakeup() {
+  0)   0.074 us    |                          update_curr();
+  0)   0.057 us    |                          wakeup_preempt_entity.isra.54();
+  0)   0.095 us    |                          set_next_buddy();
+  0)   0.119 us    |                          resched_task();
+  0)   2.106 us    |                        }
+  0)   2.601 us    |                      }
+  0)   3.909 us    |                    }
+  0) + 11.685 us   |                  }
+  0)   0.064 us    |                  _raw_spin_unlock_irqrestore();
+  0) + 15.339 us   |                }
+  0) + 15.786 us   |              }
+  0) + 16.388 us   |            }
+  0) + 17.420 us   |          }
+  0)   0.080 us    |          _raw_spin_unlock_irqrestore();
+  0) + 18.994 us   |        }
+  0) + 19.482 us   |      }
+  0) + 23.064 us   |    }
+  0) + 55.704 us   |  }
+^C
+root@debian:/sys/kernel/debug/tracing# exit
+exit
+kernel@debian:~$ 
+
