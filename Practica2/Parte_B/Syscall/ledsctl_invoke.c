@@ -17,7 +17,8 @@ void use();
 void help();
 
 int main(int argc, char **argv) {
-	int opt, num;
+	int opt, num, len;
+	char *aux;
 	//check num of arguments
 	if(argc !=2) {
 		use();
@@ -29,13 +30,23 @@ int main(int argc, char **argv) {
 			case 63: help(); return 0; break; //help option
 		}	
 	}
+	
+	//remove the x
+	if(strlen(argv[1])>2) {
+		if((argv[1][1] == 'x') || (argv[1][1] == 'X')) {
+			char subbuff[5];
+			len = strlen(argv)-2 ;
+			memcpy(aux, &argv[1][2], len);
+			aux[len] = '\0';
+		}
+	}
 	//check the argument(char) is int
-	if(!isInt(argv[1])) {
+	if(!isInt(aux)) {
 		use();
 		return -1;
 	}
 	//convert argument(char) into int
-	num=atoi(argv[1]);
+	num=atoi(aux);
 	if((num<0) || (num>7)) {
 		use();
 		return -1;
@@ -65,12 +76,12 @@ void help() {
 	printf("==============\n");
 	printf("This program modify the keyword's leds.To use this program, it should be included as a parameter the combination of LEDs to be recreated. The leds encoding is as follow:\n");
 	printf("\t [0] --  ALL OFF\n");
-	printf("\t [1] --  \n");
-	printf("\t [2] --  \n");
-	printf("\t [3] --  \n");
-	printf("\t [4] --  \n");
-	printf("\t [5] --  \n");
-	printf("\t [6] --  \n");
+	printf("\t [1] --  Scroll\n");
+	printf("\t [2] --  Caps\n");
+	printf("\t [3] --  Scroll+Caps\n");
+	printf("\t [4] --  Num\n");
+	printf("\t [5] --  Num+Scroll\n");
+	printf("\t [6] --  Num+Caps\n");
 	printf("\t [7] --  ALL ON\n");
 	printf("If you use the option -h, you can view this help.\n");
 	printf("==========================\n");
