@@ -59,10 +59,10 @@ int main(int argc, char **argv) {
 	}
 	//convert argument(char) into int
 	num=atoi(aux);
-	if((num<0) || (num>7)) {
+	/*if((num<0) || (num>7)) {
 		use();
 		return -EXIT_FAILURE;
-	}
+	}*/
 
 	printf("Numero: %d\n", num);
 	if(ledctl(num)==-1) {
