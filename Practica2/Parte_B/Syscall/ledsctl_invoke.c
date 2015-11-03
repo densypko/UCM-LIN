@@ -11,61 +11,79 @@
 #define __NR_LED 316
 #endif
 
+#define buff 25
+
 long ledctl(int num);
 int isInt(char *cad);
 void use();
 void help();
 
 int main(int argc, char **argv) {
-	int opt, num, len;
+	int opt, num=0, len;
+	char aux2[buff];
 	char *aux;
+	
 	//check num of arguments
 	if(argc !=2) {
 		use();
-		return -1;	
+		//perror("Se ha producido un error");
+		return -EXIT_FAILURE;	
 	}
+
 	//parser arguments
-	while((opt=getopt(argc,argv,"h:"))!=-1) {
+	if((opt=getopt(argc,argv,"h:"))!=-1) {
 		switch(opt) {
-			case 63: help(); return 0; break; //help option
+			case 63: help(); return EXIT_SUCCESS; break; //help option
 		}	
 	}
-	
+
 	//remove the x
 	if(strlen(argv[1])>2) {
+
 		if((argv[1][1] == 'x') || (argv[1][1] == 'X')) {
-			char subbuff[5];
-			len = strlen(argv)-2 ;
-			memcpy(aux, &argv[1][2], len);
-			aux[len] = '\0';
+			len = strlen(argv[1])-2 ;
+			memcpy(aux2, &argv[1][2], len);
+			aux2[len] = '\0';
+			aux = aux2;
+			
 		}
+		else 
+		   aux=argv[1];
 	}
+	else
+		aux=argv[1];
 	//check the argument(char) is int
 	if(!isInt(aux)) {
 		use();
-		return -1;
+		return -EXIT_FAILURE;
 	}
 	//convert argument(char) into int
 	num=atoi(aux);
 	if((num<0) || (num>7)) {
 		use();
-		return -1;
+		return -EXIT_FAILURE;
 	}
-	return ledctl(num);
+
+	printf("Numero: %d\n", num);
+	if(ledctl(num)==-1) {
+		perror("Se ha producido un error");
+		return -EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }
 
 
 /*call the syscall 316(ledctl) return 0 if ok and return -1 if any error*/
 long ledctl(int num) {
 	if((long)syscall(__NR_LED, num)!=0)
-		return -1;
-	return 0;	
+		return -EXIT_FAILURE;
+	return EXIT_SUCCESS;	
 }
 
 /*when exist any error of the use, show the method to use this program*/
 void use() {
 	printf("Use:\n");
-	printf("\t./ledctl <led[0-7]\n");
+	printf("\t./ledctl <led[0-7]>\n");
 	printf("\t./ledctl -h\n");
 }
 
@@ -104,3 +122,31 @@ int isInt(char *cad) {
    }
    return 1;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
