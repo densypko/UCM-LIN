@@ -36,22 +36,20 @@ int main(int argc, char **argv) {
 			case 63: help(); return EXIT_SUCCESS; break; //help option
 		}	
 	}
-
-	//remove the x
+	
+	aux=argv[1];
+	//remove the 0x
 	if(strlen(argv[1])>2) {
-
-		if((argv[1][1] == 'x') || (argv[1][1] == 'X')) {
+		if( argv[1][0] == '0'  && ( (argv[1][1] == 'x') || (argv[1][1] == 'X') ) ) {
 			len = strlen(argv[1])-2 ;
 			memcpy(aux2, &argv[1][2], len);
 			aux2[len] = '\0';
 			aux = aux2;
 			
 		}
-		else 
-		   aux=argv[1];
+		
+		
 	}
-	else
-		aux=argv[1];
 	//check the argument(char) is int
 	if(!isInt(aux)) {
 		use();
@@ -65,11 +63,14 @@ int main(int argc, char **argv) {
 	}*/
 
 	printf("Numero: %d\n", num);
-	if(ledctl(num)==-1) {
+	
+	if(ledctl(num) == !0) {
 		perror("Se ha producido un error");
 		return -EXIT_FAILURE;
 	}
+	
 	return EXIT_SUCCESS;
+
 }
 
 
@@ -83,7 +84,7 @@ long ledctl(int num) {
 /*when exist any error of the use, show the method to use this program*/
 void use() {
 	printf("Use:\n");
-	printf("\t./ledctl <led[0-7]>\n");
+	printf("\t./ledctl < 0-7 || 0x0-0x7 >\n");
 	printf("\t./ledctl -h\n");
 }
 
