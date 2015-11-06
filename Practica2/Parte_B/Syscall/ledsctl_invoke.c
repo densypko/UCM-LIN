@@ -16,26 +16,19 @@
 long ledctl(int num);
 int isInt(char *cad);
 void use();
-void help();
 
 int main(int argc, char **argv) {
-	int opt, num=0, len;
+	int num, len;
 	char aux2[buff];
 	char *aux;
 	
 	//check num of arguments
 	if(argc !=2) {
+		fprintf(stderr,"El nº de argumentos es incorrecto.\n");
 		use();
-		//perror("Se ha producido un error");
 		return -EXIT_FAILURE;	
 	}
 
-	//parser arguments
-	if((opt=getopt(argc,argv,"h:"))!=-1) {
-		switch(opt) {
-			case 63: help(); return EXIT_SUCCESS; break; //help option
-		}	
-	}
 	
 	aux=argv[1];
 	//remove the 0x
@@ -52,19 +45,15 @@ int main(int argc, char **argv) {
 	}
 	//check the argument(char) is int
 	if(!isInt(aux)) {
+		fprintf(stderr,"El arguemnto es incorrecto.\n");
 		use();
 		return -EXIT_FAILURE;
 	}
 	//convert argument(char) into int
 	num=atoi(aux);
-	/*if((num<0) || (num>7)) {
-		use();
-		return -EXIT_FAILURE;
-	}*/
-
 	printf("Numero: %d\n", num);
 	
-	if(ledctl(num) == !0) {
+	if(ledctl(num) == -1) {
 		perror("Se ha producido un error");
 		return -EXIT_FAILURE;
 	}
@@ -75,10 +64,8 @@ int main(int argc, char **argv) {
 
 
 /*call the syscall 316(ledctl) return 0 if ok and return -1 if any error*/
-long ledctl(int num) {
-	if((long)syscall(__NR_LED, num)!=0)
-		return -EXIT_FAILURE;
-	return EXIT_SUCCESS;	
+long ledctl(int num) {	
+	return (long)syscall(__NR_LED, num);	
 }
 
 /*when exist any error of the use, show the method to use this program*/
@@ -86,26 +73,6 @@ void use() {
 	printf("Use:\n");
 	printf("\t./ledctl < 0-7 || 0x0-0x7 >\n");
 	printf("\t./ledctl -h\n");
-}
-
-/*show a short documentation of this program*/
-void help() {
-	printf("==============\n");
-	printf("Instructions\n");
-	printf("==============\n");
-	printf("This program modify the keyword's leds.To use this program, it should be included as a parameter the combination of LEDs to be recreated. The leds encoding is as follow:\n");
-	printf("\t [0] --  ALL OFF\n");
-	printf("\t [1] --  Scroll\n");
-	printf("\t [2] --  Caps\n");
-	printf("\t [3] --  Scroll+Caps\n");
-	printf("\t [4] --  Num\n");
-	printf("\t [5] --  Num+Scroll\n");
-	printf("\t [6] --  Num+Caps\n");
-	printf("\t [7] --  ALL ON\n");
-	printf("If you use the option -h, you can view this help.\n");
-	printf("==========================\n");
-	printf("Authors: Marco & Denys\n");
-	printf("==========================\n");
 }
 
 /*return 1 when cad is int and return 0 in the other case*/
