@@ -33,7 +33,6 @@ int convert(int num) {
 			case 1: status |=4;
 			case 2: status |=2;
 		}
-		printf("Status ==> %d\n",status);
 	  }	
 	}
 	return status;
