@@ -51,8 +51,6 @@ int main(int argc, char **argv) {
 	}
 	//convert argument(char) into int
 	num=atoi(aux);
-	printf("Numero: %d\n", num);
-	
 	if(ledctl(num) == -1) {
 		perror("Se ha producido un error");
 		return -EXIT_FAILURE;
