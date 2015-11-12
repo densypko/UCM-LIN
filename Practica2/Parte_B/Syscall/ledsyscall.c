@@ -29,11 +29,10 @@ int convert(int num) {
 	for(i=0;i<3;i++){
 	  if(num&(0x1 << i)) {
 	  	switch(i) {
-			case 0: status |=1;
-			case 1: status |=4;
-			case 2: status |=2;
+			case 0: status |=1; break;
+			case 1: status |=4; break;
+			case 2: status |=2; break;
 		}
-		printf("Status ==> %d\n",status);
 	  }	
 	}
 	return status;
