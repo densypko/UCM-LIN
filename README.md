@@ -18,6 +18,13 @@ Práctica 1 "Uso avanzado de módulos del kernel"
 
 Práctica 2 "Implementación de llamadas al sistema. Desarrollo de driver para un dispositivo USB"
 ===============
+ Familiarizarse con:
+ 
+    -Implementación de llamadas al sistema en Linux y su procedimiento de invocación
+ 
+    -Compilación del kernel Linux 
+ 
+    -Estructura de un driver de dispositivo USB
 
 Práctica 3 "Gestión de procesos y sincronización en el kernel"
 ===============
