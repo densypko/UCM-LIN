@@ -1,0 +1,22 @@
+======================
+  Instrucciones
+======================
+Este programa, realizado en modo usuario provee de la posibilidad de reproducir una serie
+de secuencias en los leds. El modo de uso se muestra a continuación.
+
+Forma de uso: ./blink_user.c [secuencia]
+Secuencias == Este campo corresponde con la secuencia que se desea reproducir.
+Es sensible a mayusculas y minusculas, es decir, 'police' no es lo mismo que 'Police'.
+Como posible secuencia especial tenemos 'help' que muestra esta ayuda.
+Las posibles secuencias son las siguientes:
+
+      -  police = Reproduce las luces de un coche de policia
+      -  rbcross = Secuencia de rojo y azul cruzandose con retroalimentacion
+      -  rbcrossback = Secuencia de rojo y azul cruzandose
+      -  salad = Viaja por el rango de colores rgb en dos componentes
+      -  clear = Apaga todos los leds
+      -  help = Muestra la ayuda por pantalla
+      
+==========================
+Authors: Marco & Denis
+==========================
