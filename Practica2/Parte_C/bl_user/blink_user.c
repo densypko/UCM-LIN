@@ -23,7 +23,11 @@ int salad();
 int change_leds(int fd, char *c0,char *c1,char *c2,char *c3,char *c4,char *c5,char *c6,char *c7);
 
 /*Reproduce the secuence that come into argv[1] and return the result of that
-  exec.*/
+  exec.
+ *(input)  argc = num of strings that user write
+ *(input)  argv = List of strings that user write
+ *(output) ret  = 0 if ok, -1 if ocure any error
+ */
 int main(int argc, char **argv) {
 	int ret=0;
 	//only one arguments and need that argument
@@ -38,7 +42,10 @@ int main(int argc, char **argv) {
 	return ret;
 }
 
-/*check the input sec and go to exec the secuence or return -1*/
+/*Check the input sec and go to exec the secuence or return -1
+ *(input) sec = secuence to parser of the program
+ *(output) ret = 0 if ok, -1 if ocure any error on the secuence or not exist de secuence
+ */
 int showSec(char *sec) {
 	int ret=0;
 	if(strcmp(sec,"police")==0)
@@ -73,6 +80,11 @@ void usage() {
 	printf("==========================\n");
 }
 
+/*Change leds color to input value.
+ *(input)  fd                      = file to set the value
+ *(input)  c0,c1,c2,c3,c4,c5,c6,c7 = leds to set the color
+ *(output) ret                    = 0 if ok, -1 if ocure any error
+ */
 int change_leds(int fd, char *c0,char *c1,char *c2,char *c3,char *c4,char *c5,char *c6,char *c7) {
 	char *buf= (char*)malloc(sizeof(char)*BUFFER_LENGTH);
 	if(!buf) {
@@ -106,7 +118,7 @@ int change_leds(int fd, char *c0,char *c1,char *c2,char *c3,char *c4,char *c5,ch
 	return 0;
 }
 
-/*Put all leds off. clear() is considareted a secuence.*/
+/*Put all leds off. clear() is considareted a secuence. Return -1 if ocure any error. Return 0 if ok*/
 int clear() {
 	int ret=0;
 	int fd = open(file, O_WRONLY);
@@ -115,7 +127,7 @@ int clear() {
 	return ret;
 }
 
-/*simulate a light of police car*/
+/*simulate a light of police car. Return -1 if ocure any error. Return 0 if ok*/
 int police() {
 	int time=250000;
 	int replay=20,i,ret=0;
@@ -133,7 +145,7 @@ int police() {
 	return ret;
 }
 
-/*cross the led red and blue and restart when finish*/
+/*cross the led red and blue and restart when finish. Return -1 if ocure any error. Return 0 if ok*/
 int rb_cross() {
 	int time=250000;
 	int replay=10,i,j,ret=0;
@@ -201,7 +213,7 @@ int rb_cross() {
 	return ret;
 }
 
-/*led red and blue cross and back cross again*/
+/*led red and blue cross and back cross again. Return -1 if ocure any error. Return 0 if ok*/
 int rb_cross_back() {
 	int replay=10,i,j,ret=0,c;
 	int fd = open(file, O_WRONLY);
@@ -277,7 +289,7 @@ int rb_cross_back() {
 	return ret;
 }
 
-/**/
+/*Travel to all RGB colors into two components. Return -1 if ocure any error. Return 0 if ok*/
 int salad() {
 	int time=25000/2;
 	int max=90,min=0;
@@ -287,6 +299,7 @@ int salad() {
 	char color[6];
 	int red=min,green=min,blue=min;
 
+	//go up red color to max
 	while((red<max-1)&&(ret==0)){
 		char rcolor[2],gcolor[2],bcolor[2];
 		red++;
@@ -303,6 +316,7 @@ int salad() {
 		usleep(time*2);
 	}
 	for(i=0;i<2;i++){
+		//go up blue color to max
 		while((blue<max-1)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			blue++;
@@ -319,6 +333,8 @@ int salad() {
 			if((ret=change_leds(fd,color,color,color,color,color,color,color,color)) == -1) break;
 			usleep(time);
 		}
+
+		//go down red color to min
 		while((red>min)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			red--;
@@ -335,7 +351,8 @@ int salad() {
 			if((ret=change_leds(fd,color,color,color,color,color,color,color,color)) == -1) break;
 			usleep(time);
 		}
-
+		
+		//go up blue color to max
 		while((green<max-1)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			green++;
@@ -353,6 +370,7 @@ int salad() {
 			usleep(time);
 		}
 
+		//go down blue color to min
 		while((blue>min)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			blue--;
@@ -370,6 +388,7 @@ int salad() {
 			usleep(time);
 		}
 	
+		//go up blue color to max
 		while((red<max-1)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			red++;
@@ -386,6 +405,7 @@ int salad() {
 			usleep(time);
 		}
 
+		//go down green color to min
 		while((green>min+1)&&(ret==0)){
 			char rcolor[2],gcolor[2],bcolor[2];
 			green--;
@@ -403,6 +423,8 @@ int salad() {
 			usleep(time);
 		}
 	}
+
+	//go down red color to min
 	while((red>min)&&(ret==0)){
 		char rcolor[2],gcolor[2],bcolor[2];
 		red--;
@@ -419,6 +441,7 @@ int salad() {
 		if((ret=change_leds(fd,color,color,color,color,color,color,color,color)) == -1) break;
 		usleep(time*2);
 	}
+	//free resources
 	close(fd);
 	clear();
 	return ret;
