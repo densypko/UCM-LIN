@@ -153,27 +153,26 @@ static ssize_t blink_write(struct file *file, const char *user_buffer,
 	}
 	
 	token = strsep(&kbufp,delim);
-	while( token != NULL){
-		if( sscanf(token,"%d:%x",&i,&color) == 2) { 
-			/*Encender el led del parametro los demás campos ya estan rellenos*/
-			if( i >= 0 && i < NR_LEDS){ 
-				messages[i][3]=((color>>16) & 0xff);
- 				messages[i][4]=((color>>8) & 0xff);
- 				messages[i][5]=(color & 0xff);			
-			}else{
-				printk(KERN_INFO "blink: nº led incorrecto.\n");
+	if(len>1) {
+		while( token != NULL){
+			if( sscanf(token,"%d:%x",&i,&color) == 2) { 
+				/*Encender el led del parametro los demás campos ya estan rellenos*/
+				if( i >= 0 && i < NR_LEDS){ 
+					messages[i][3]=((color>>16) & 0xff);
+	 				messages[i][4]=((color>>8) & 0xff);
+	 				messages[i][5]=(color & 0xff);			
+				}else{
+					printk(KERN_INFO "blink: nº led incorrecto.\n");
+					return -EINVAL;
+				}
+			}
+			else{
+				printk(KERN_INFO "blink: argumento incorrecto.\n");
 				return -EINVAL;
-			}	
-		}else if (sscanf(token,"%d:%x",&i,&color) == 0){
-			//apagar todos¿?
+			}
+			token=strsep(&kbufp,delim);	
 		}
-		else{
-			printk(KERN_INFO "blink: argumento incorrecto.\n");
-			return -EINVAL;
-		}
-		token=strsep(&kbufp,delim);	
-	}	
-
+	}
 
 	for (i = 0;i<NR_LEDS;i++){
 		/* 
