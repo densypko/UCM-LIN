@@ -1,0 +1,8 @@
+for (( i=0 ; $i<20; i++ ))
+do
+echo add $i > /proc/modlist
+sleep 1
+echo "--------------------------------------"
+cat /proc/modlist
+done
+echo cleanup > /proc/modlist

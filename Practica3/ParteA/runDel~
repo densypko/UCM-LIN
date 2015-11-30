@@ -1,0 +1,10 @@
+for (( i=0 ; $i<30; i++ ))
+do
+echo remove $i > /proc/modlist
+sleep 2
+echo "--------------------------------------"
+cat /proc/modlist
+done
+
+echo cleanup > /proc/modlist
+
