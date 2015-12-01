@@ -170,7 +170,8 @@ static ssize_t modlist_read(struct file *filp, char __user *buf, size_t len, lof
   struct list_item *item = NULL;
   struct list_head *cur_node = NULL;
 
-  char kbuf[BUFFER_LENGTH] = "";
+  //char kbuf[BUFFER_LENGTH] = "";
+  char *kbuf = (char*)vmalloc(sizeof(char)*len);
   char *list_string = kbuf;
 
 
@@ -187,15 +188,19 @@ static ssize_t modlist_read(struct file *filp, char __user *buf, size_t len, lof
 
   nr_bytes=list_string-kbuf;
 
-  if (len<nr_bytes)
+  if (len<nr_bytes) {
+    vfree(kbuf);
     return -ENOSPC; //No queda espacio en el dispositivo
+  }
 
     /* Transfer data from the kernel to userspace */
-  if (copy_to_user(buf, kbuf, nr_bytes))
+  if (copy_to_user(buf, kbuf, nr_bytes)) {
+    vfree(kbuf);
     return -EINVAL; //Argumento invalido
+  }
 
   (*off)+=len;  /* Update the file pointer */
-  //vfree(kbuf);
+  vfree(kbuf);
   return nr_bytes;
 }
 
