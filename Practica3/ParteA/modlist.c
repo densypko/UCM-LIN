@@ -166,12 +166,14 @@ static ssize_t modlist_write(struct file *filp, const char __user *buf, size_t l
 
 static ssize_t modlist_read(struct file *filp, char __user *buf, size_t len, loff_t *off) {
 
-  int nr_bytes;
+  int nr_bytes=0;//,cont=0;
   struct list_item *item = NULL;
   struct list_head *cur_node = NULL;
+  int count=0;
 
-  //char kbuf[BUFFER_LENGTH] = "";
-  char *kbuf = (char*)vmalloc(sizeof(char)*len); // no es muy eficiente porque cada página ocupa 32K
+  char kbuf[BUFFER_LENGTH] = "";
+  char aux[10];
+  //char *kbuf = (char*)vmalloc(sizeof(char)*len); // no es muy eficiente porque cada página ocupa 32K
   char *list_string = kbuf;
 
 
@@ -182,25 +184,30 @@ static ssize_t modlist_read(struct file *filp, char __user *buf, size_t len, lof
      list_for_each(cur_node, &my_list) {
        /* item points to the structure wherein the links are embedded */
        item = list_entry(cur_node, struct list_item, links);
-       list_string += sprintf(list_string, "%d\n", item->data);
+	if(sprintf(aux,"%d\n", item->data)+nr_bytes/*count*/ >= BUFFER_LENGTH-1)
+		break;
+	printk(KERN_INFO "strlen ==> %d\n",(int)strlen(list_string));
+	printk(KERN_INFO "buff ==> %d\n",BUFFER_LENGTH);
+
+        count= sprintf(list_string, "%d\n", item->data);
+	list_string+=count;
+	nr_bytes+=count;
      }
   spin_unlock(&mtx);
 
-  nr_bytes=list_string-kbuf;
-
   if (len<nr_bytes) {
-    vfree(kbuf);
+    //vfree(kbuf);
     return -ENOSPC; //No queda espacio en el dispositivo
   }
 
     /* Transfer data from the kernel to userspace */
   if (copy_to_user(buf, kbuf, nr_bytes)) {
-    vfree(kbuf);
+    //vfree(kbuf);
     return -EINVAL; //Argumento invalido
   }
 
   (*off)+=len;  /* Update the file pointer */
-  vfree(kbuf);
+  //vfree(kbuf);
   return nr_bytes;
 }
 

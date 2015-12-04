@@ -1,10 +1,10 @@
 #!/bin/bash
 
 function addSumFast() {
-	for (( i=0 ; $i<20; i++ )); do
+	for (( i=0 ; $i<100; i++ )); do
 		echo add $i > /proc/modlist
 		echo "add $i [ok]"
-		#cat /proc/modlist
+		cat /proc/modlist
 		sleep 1
 	done
 	echo "--------------------------------------"
@@ -14,7 +14,7 @@ function addSumMedium() {
 	for (( i=10 ; $i<20; i++ )); do
 		echo add $i > /proc/modlist
 		echo "add $i [ok]"
-		#cat /proc/modlist
+		cat /proc/modlist
 		sleep 3
 	done
 	echo "--------------------------------------"
@@ -97,14 +97,19 @@ function sorts() {
 	done
 }
 
-addSumFast & 
-addSumMedium & 
+addSumFast
+#addSumMedium & 
 #addSumLow &
 #addMulFast &
 #addMulMedium &
 #addMulLow &
-delFirst &
+#delFirst &
 #delSecond &
 #sorts &
+
+
+#`gnome-terminal -e ./add.sh`
+#`gnome-terminal -e ./cat.sh`
+#sleep 3
+#`gnome-terminal -e ./del.sh`
 exit 0
-#echo cleanup > /proc/modlist
