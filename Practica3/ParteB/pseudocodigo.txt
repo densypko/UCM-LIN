@@ -1,0 +1,84 @@
+mutex mtx;
+condvar prod,cons;
+int prod_count=0,cons_count=0;
+cbuffer_t* cbuffer;
+
+void fifoproc_open(bool abre_para_lectura) {
+	lock(mtx);
+		if(abre_para_lectura) {
+			cons_count++;
+			cond_signal(prod);
+			while(prod_count==0)
+				cond_wait(cons,mtx);
+		}
+		else {
+			prod_count++;
+			cond_signal(cons);
+			while(cons_count==0)
+				cond_wait(prod,mtx);
+		}
+	unlock(mtx);
+}
+
+void fifoproc_write(char* buff, int len) {
+	char kbuffer[MAX_KBUF];
+
+	if(len > MAX_CBUFFER_LEN || len>MAX_KBUF) { return Error;}
+	if(copy_from_user(kbuffer, buff, len)) {return Error;}
+
+	lock(mtx);
+
+	while(nr_gaps_cbuffer_t(cbuffer)<len && cons_count>0) {
+		cond_wait(prod,mtx);
+	}
+
+	if (cons_count==0) {unlock(mtx); return -EPIPE;}
+
+	insert_items_cbuffer_t(cbuffer,kbuffer,len);
+
+	cond_signal(cons);
+
+	unlock(mtx);
+	return len;
+}
+
+void fifoproc_read(const char* buff, int len) {
+	char kbuffer[MAX_KBUF];
+	
+	if(!kbuf)
+		return -ENOMEM;
+	if(len > MAX_CBUFFER_LEN || len>MAX_KBUF) { return Error;}
+
+	lock(mtx);
+		while(size_cbuffer_t(cbuffer)==0 && prod_count>0) {
+			cond_wait(cons,mtx);
+		}
+		
+		if (prod_count==0) {unlock(mtx); return 0;}
+
+		if (size_cbuffer_t(cbuffer)<len)
+			memcpy(kbuffer,head_cbuffer_t(cbuffer),size_cbuffer_t(cbuffer));
+		else
+			memcpy(kbuffer,head_cbuffer_t(cbuffer),len);
+
+		remove_items_cbuffer_t(cbuffer, head_cbuffer_t(cbuffer), len);
+		cond_signal(prod);
+	unlock(mtx);
+	return len;
+}
+
+void fifoproc_release(bool lectura) {
+	lock(mtx);
+		if(lectura) {
+			cons_count--;
+			if(prod_count ==0)
+				clear_cbuffer_t(cbuffer);
+				
+		}
+		else {
+			prod_count--;
+			if(cons_count ==0)
+				clear_cbuffer_t(cbuffer);
+		}
+	unlock(mtx);
+}
