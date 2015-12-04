@@ -171,7 +171,7 @@ static ssize_t modlist_read(struct file *filp, char __user *buf, size_t len, lof
   struct list_head *cur_node = NULL;
 
   //char kbuf[BUFFER_LENGTH] = "";
-  char *kbuf = (char*)vmalloc(sizeof(char)*len);
+  char *kbuf = (char*)vmalloc(sizeof(char)*len); // no es muy eficiente porque cada página ocupa 32K
   char *list_string = kbuf;
 
 

@@ -1,21 +1,21 @@
 #!/bin/bash
 
 function addSumFast() {
-	for (( i=0 ; $i<200; i++ )); do
+	for (( i=0 ; $i<20; i++ )); do
 		echo add $i > /proc/modlist
-		echo "--------------------------------------"
-		cat /proc/modlist
-		sleep 0.1
+		echo "add $i [ok]"
+		#cat /proc/modlist
+		sleep 1
 	done
 	echo "--------------------------------------"
 }
 
 function addSumMedium() {
-	for (( i=250 ; $i<490; i++ )); do
+	for (( i=10 ; $i<20; i++ )); do
 		echo add $i > /proc/modlist
-		echo "--------------------------------------"
-		cat /proc/modlist
-		sleep 0.5
+		echo "add $i [ok]"
+		#cat /proc/modlist
+		sleep 3
 	done
 	echo "--------------------------------------"
 }
@@ -67,12 +67,13 @@ function addMulLow() {
 }
 
 function delFirst() {
-	echo "--------------------------------------"
-	for (( i=0 ; $i<200; i++ )); do
+	#echo "--------------------------------------"
+	for (( i=0 ; $i<5; i++ )); do
+		sleep 4
 		echo remove $i > /proc/modlist
-		cat /proc/modlist
-		sleep 0.2
-		echo "--------------------------------------"
+		echo "del $i [ok]"
+		#cat /proc/modlist
+		#echo "--------------------------------------"
 	done
 }
 
@@ -96,14 +97,14 @@ function sorts() {
 	done
 }
 
-addSumFast &
-addSumMedium &
-addSumLow &
-addMulFast &
-addMulMedium &
-addMulLow &
+addSumFast & 
+addSumMedium & 
+#addSumLow &
+#addMulFast &
+#addMulMedium &
+#addMulLow &
 delFirst &
-delSecond &
-sorts &
+#delSecond &
+#sorts &
 exit 0
 #echo cleanup > /proc/modlist
