@@ -32,7 +32,7 @@ void fifoproc_open(bool abre_para_lectura) {
 	unlock(mtx);
 }
 
-void fifoproc_write(char* buff, int len) {
+int fifoproc_write(char* buff, int len) {
 	char kbuffer[MAX_KBUF];
 
 	if(len > MAX_CBUFFER_LEN || len>MAX_KBUF) { return Error;}
@@ -55,7 +55,7 @@ void fifoproc_write(char* buff, int len) {
 	return len;
 }
 
-void fifoproc_read(const char* buff, int len) {
+int fifoproc_read(const char* buff, int len) {
 	char kbuffer[MAX_KBUF];
 	
 	if(len > MAX_CBUFFER_LEN || len>MAX_KBUF) { return Error;}
@@ -66,22 +66,15 @@ void fifoproc_read(const char* buff, int len) {
 		}
 		
 		/*En caso de no existir productores finaliza con EOF*/
-		if (prod_count==0) {unlock(mtx); return 0;}
-
-		/*Si no hay suficientes elementos para satisfacer la demanda de lectura,
-		 *lee los elementos que haya en el buffer*/
-		if (size_cbuffer_t(cbuffer)<len)
-			memcpy(kbuffer,head_cbuffer_t(cbuffer),size_cbuffer_t(cbuffer));
-		/*Si hay suficientes elementos, los lee*/
-		else
-			memcpy(kbuffer,head_cbuffer_t(cbuffer),len);
+		if ((prod_count==0)&&(size_cbuffer_t(cbuffer)==0)) {unlock(mtx); return 0;}
 
 		/*Elimina los elementos leidos del buffer y manda una señal a los productores
 		 *por si alguno dormido*/
-		remove_items_cbuffer_t(cbuffer, head_cbuffer_t(cbuffer), len);
+		remove_items_cbuffer_t(cbuffer, kbuffer, len);
 		cond_signal(prod);
 	unlock(mtx);
-	return len;
+	copy_to_user(buff, kbuffer, strlen(kbuffer));
+	return strlen(kbuffer);
 }
 
 /*
@@ -95,9 +88,7 @@ void fifoproc_release(bool lectura) {
 		 *ya no existan productores, limpiamos el buffer*/
 		if(lectura) {
 			cons_count--;
-			if(prod_count ==0)
-				clear_cbuffer_t(cbuffer);
-				
+			cond_signal(prod);
 		}
 
 		/*Si queremos cerrar un fichero en modo escritura, reducimos
@@ -105,8 +96,10 @@ void fifoproc_release(bool lectura) {
 		 *ya no existan consumidores, limpiamos el buffer*/
 		else {
 			prod_count--;
-			if(cons_count ==0)
-				clear_cbuffer_t(cbuffer);
+			cond_signal(cons);
 		}
+
+		if((prod_count ==0) && (cons_count ==0))
+			clear_cbuffer_t(cbuffer);
 	unlock(mtx);
 }
