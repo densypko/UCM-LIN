@@ -12,7 +12,7 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("FifoLin Kernel Module - FDI-UCM");
 MODULE_AUTHOR("Marco Cuevas, Denys Sypko");
 
-#define BUFFER_LENGTH 4096
+#define BUFFER_LENGTH 100
 
 DEFINE_SEMAPHORE(mtx);
 int prod_count, cons_count, prod_waiting, cons_waiting;
@@ -25,52 +25,46 @@ cbuffer_t *cbuffer;
 ////////////////////////////////// LECTURA, ESCRITURA, APERTURA Y CIERRE /////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static int open_fifoLin(struct inode *node, struct file *filp) {
+	if(down_interruptible(&mtx)) return -EINTR;
 	if(filp->f_mode & FMODE_READ) {
-		if(down_interruptible(&mtx)) return -EINTR;
-			cons_count++;
-			if(cons_count==1) {
-				while(prod_waiting > 0) {	
-					up(&prod);
-					prod_waiting--;		
-				}
-			}
+		cons_count++;
+		if(prod_waiting > 0) {	
+			up(&prod);
+			prod_waiting--;		
+		}
 
-			while(prod_count<=0) {
-				cons_waiting++;
+		while(prod_count<=0) {
+			cons_waiting++;
+			up(&mtx);
+			if(down_interruptible(&cons)) {
+				down(&mtx);
+				cons_waiting--;
 				up(&mtx);
-				if(down_interruptible(&cons)) {
-					down(&mtx);
-					cons_waiting--;
-					up(&mtx);
-					return -EINTR;
-				}
-				if(down_interruptible(&mtx)) return -EINTR;
-			}		
-		up(&mtx);
+				return -EINTR;
+			}
+			if(down_interruptible(&mtx)) return -EINTR;
+		}		
 	}
 	else {
-		if(down_interruptible(&mtx)) return -EINTR;
-			prod_count++;
-			if(prod_count==1) {
-				while(cons_waiting > 0) {
-					up(&cons);
-					cons_waiting--;		
-				}
-			}
+		prod_count++;
+		if(cons_waiting > 0) {
+			up(&cons);
+			cons_waiting--;		
+		}
 
-			while(cons_count<=0) {
-				prod_waiting++;
+		while(cons_count<=0) {
+			prod_waiting++;
+			up(&mtx);
+			if(down_interruptible(&prod)) {
+				down(&mtx);
+				prod_waiting--;
 				up(&mtx);
-				if(down_interruptible(&prod)) {
-					down(&mtx);
-					prod_waiting--;
-					up(&mtx);
-					return -EINTR;
-				}
-				if(down_interruptible(&mtx)) return -EINTR;
-			}		
-		up(&mtx);
+				return -EINTR;
+			}
+			if(down_interruptible(&mtx)) return -EINTR;
+		}		
 	}
+	up(&mtx);
 	printk(KERN_INFO "FifoLin: Productores ==> %d  Consumidores ==> %d\n",prod_count, cons_count);
 	printk(KERN_INFO "FifoLin: ProdWaiting ==> %d  ConsuWaiting ==> %d\n",prod_waiting, cons_waiting);
 	printk(KERN_INFO "FifoLin: /proc/fifoLin opened\n");
@@ -78,26 +72,24 @@ static int open_fifoLin(struct inode *node, struct file *filp) {
 }
 
 static int release_fifoLin(struct inode *node, struct file *filp) {
+	if(down_interruptible(&mtx)) return -EINTR;
 	if(filp->f_mode & FMODE_READ) {
-		if(down_interruptible(&mtx)) return -EINTR;
-			if(cons_waiting == cons_count) {
-				cons_waiting--;
-				up(&cons);
-			}
-			cons_count--;
-		up(&mtx);
+		cons_count--;
+		if(prod_waiting > 0) {
+			up(&prod);
+			prod_waiting--;		
+		}
 	}
 	else {
-		if(down_interruptible(&mtx)) return -EINTR;
-			if(prod_waiting == prod_count) {
-				prod_waiting--;
-				up(&prod);
-			}
-			prod_count--;
-		up(&mtx);
+		prod_count--;
+		if(cons_waiting > 0) {
+			up(&cons);
+			cons_waiting--;		
+		}
 	}
 	if((cons_count==0)&&(prod_count==0))
 		clear_cbuffer_t(cbuffer);
+	up(&mtx);
 	printk(KERN_INFO "FifoLin: Productores ==> %d  Consumidores ==> %d\n",prod_count, cons_count);
 	printk(KERN_INFO "FifoLin: ProdWaiting ==> %d  ConsuWaiting ==> %d\n",prod_waiting, cons_waiting);
 	printk(KERN_INFO "FifoLin: /proc/fifoLin closed\n");
@@ -160,8 +152,16 @@ static ssize_t read_fifoLin(struct file *filp, char __user *buf, size_t len, lof
 			}
 			if(down_interruptible(&mtx)) return -EINTR;
 		}
-		if(prod_count <= 0) return 0;
+		if(prod_count == 0 && is_empty_cbuffer_t(cbuffer)) {
+			up(&mtx);
+			return 0;
+		}
 		remove_items_cbuffer_t(cbuffer, kbuf, len);
+		
+		if(prod_waiting > 0) {
+			up(&prod);
+			prod_waiting--;
+		}
 	up(&mtx);
 
 	copy_to_user(buf, kbuf, len);
@@ -198,6 +198,7 @@ int init_fifoLin_module( void ) {
 	}
 	else
 		printk(KERN_INFO "FifoLin: Module fifoLin loaded\n");
+	//try_module_get(THIS_MODULE);
 	return ret;
 }
 
@@ -206,6 +207,7 @@ void exit_fifoLin_module( void ) {
 	destroy_cbuffer_t ( cbuffer );
 	remove_proc_entry("fifoLin", NULL); // eliminar la entrada del /proc
 	printk(KERN_INFO "FifoLin: Module fifoLin unloaded.\n");
+	//module_put(THIS_MODULE);
 }
 
 

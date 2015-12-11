@@ -1,11 +1,11 @@
 #!/bin/bash
 
 function addSumFast() {
-	for (( i=0 ; $i<100; i++ )); do
+	for (( i=0 ; $i<200; i++ )); do
 		echo add $i > /proc/modlist
 		echo "add $i [ok]"
 		cat /proc/modlist
-		sleep 1
+		sleep 0.1
 	done
 	echo "--------------------------------------"
 }
