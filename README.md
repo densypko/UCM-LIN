@@ -28,6 +28,11 @@ Práctica 2 "Implementación de llamadas al sistema. Desarrollo de driver para u
 
 Práctica 3 "Gestión de procesos y sincronización en el kernel"
 ===============
+  Familiarizarse con: 
+
+	-Uso de mecanismos de sincronización en el kernel Linux 
+	
+	-Implementación de tuberías para comunicación entre procesos
 
 
 Práctica 4 "Gestión de interrupciones y trabajos diferidos"
