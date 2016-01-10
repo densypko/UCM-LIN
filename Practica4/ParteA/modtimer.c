@@ -5,6 +5,7 @@
 #include <linux/timer.h>
 
 #define BUFFER_LENGTH       100
+#define CBUF_LENGTH			10
 
 struct timer_list my_timer; /* Structure that describes the kernel timer */
 cbuffer_t *cbuffer;
@@ -22,7 +23,7 @@ static struct list_head my_list; // nodo fantasma
 //////////////////////// Parametros Configurables desde /proc/modconfig/////////////////////////////////////////
 
 int timer_period = 250; // temporizador se activa cada timer_period  ticks 
-int max_random = 300;  // el nº aleat. maximo.
+int max_random = 300;  // el nº aleat. maximo. val -> max_random-1
 int emergency_threshold = 80; // el % de ocupación que provoca la activación de la tarea 
 
 static struct proc_dir_entry *proc_entry_modtimer; // entrada de /proc
@@ -83,13 +84,79 @@ static int release_modtimer(struct inode *node, struct file *filp) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static ssize_t write_modconfig(struct file *filp, const char __user *buf, size_t len, loff_t *off) {
+	
+	int available_space = BUFFER_LENGTH-1;
+  	char kbuf[BUFFER_LENGTH];
+	int val;
+
+	if ((*off) > 0) /* The application can write in this entry just once !! */
+		return 0;
+ 	
+	if (len > available_space) {
+		printk(KERN_INFO "modtimer: not enough space!!\n");
+		return -ENOSPC; // No queda espacio en el dispositivo
+	}
+
+	/* Transfer data from user to kernel space 
+    ptr destino : kbuf
+    ptr origen : buf
+    nrbytes: len
+  	*/
+	if (copy_from_user( kbuf, buf, len ))  
+		return -EFAULT; // Direccion incorrecta
+  
+	kbuf[len]='\0'; // añadimos el fin de la cadena al copiar los datos from user space.
+	*off+=len;            /* Update the file pointer */
+	
+	/*sscanf() return : el nº de elementos asignados  strcmp() return : 0 -> si son iguales  */
+	if( sscanf(kbuf,"timer_period_ms %d",&val) == 1){
+		if(val < 4) // cada tick por defecto son 4 ms 
+			return -1;
+		timer_period=val/4; //ticks
+	}
+	else if( sscanf(kbuf,"max_random %d",&val) == 1){
+		max_random=val;
+	}
+	else if ( strcmp(kbuf,"emergency_threshold %d",&val) == 1){
+		if(val<10)
+			return -1;
+		emergency_threshold=val;
+	}
+	else{
+		printk(KERN_INFO "ERROR: comando no valido!!!\n");
+		return -1;
+	}
 
 	return len;
 }
 
 static ssize_t read_modconfig(struct file *filp, char __user *buf, size_t len, loff_t *off) {
 	
-	return len;
+	int nr_bytes;
+	char kbuf[BUFFER_LENGTH] = "";
+	char *list_string = kbuf;
+
+	/* Tell the application that there is nothing left to read  "Para no copiar basura si llamas otra vez" */
+	if ((*off) > 0) 
+      return 0;
+	
+	list_string += sprintf(list_string, "timer_period_ms=%d\n", timer_period*4);
+	list_string += sprintf(list_string, "max_random=%d\n", max_random);
+	list_string += sprintf(list_string, "emergency_threshold=%d\n", emergency_threshold);
+	
+	nr_bytes = list_string-kbuf;
+	
+	if (len < nr_bytes)
+    return -ENOSPC; //No queda espacio en el dispositivo
+  
+    /* Transfer data from the kernel to userspace */  
+  	if (copy_to_user(buf, kbuf, nr_bytes))
+    	return -EINVAL; //Argumento invalido
+    
+  	(*off)+=len;  /* Update the file pointer */
+
+  	return nr_bytes; 
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,14 +218,14 @@ int init_timer_module( void )
 
 
 void cleanup_timer_module( void ){
-  /* Wait until completion of the timer function (if it's currently running) and delete timer */
-  del_timer_sync(&my_timer);
+	/* Wait until completion of the timer function (if it's currently running) and delete timer */
+    del_timer_sync(&my_timer);
   
-  remove_proc_entry("modtimer", NULL); // eliminar la entrada del /proc
-  printk(KERN_INFO "Modtimer: Module unloaded.\n");
+	remove_proc_entry("modtimer", NULL); // eliminar la entrada del /proc
+	printk(KERN_INFO "Modtimer: Module unloaded.\n");
   
-  remove_proc_entry("modconfig", NULL); // eliminar la entrada del /proc
-  printk(KERN_INFO "Modconfig: Module unloaded.\n");
+	remove_proc_entry("modconfig", NULL); // eliminar la entrada del /proc
+	printk(KERN_INFO "Modconfig: Module unloaded.\n");
 }
 
 module_init( init_timer_module );
