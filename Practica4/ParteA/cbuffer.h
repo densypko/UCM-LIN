@@ -4,7 +4,7 @@
 
 typedef struct
 {
-    char* data;			/* raw byte vector */
+        unsigned int* data;			/* raw byte vector */
 	unsigned int head;		/* Index of the first element // head in [0 .. max_size-1] */
 	unsigned int size;		/* Current Buffer size // size in [0 .. max_size] */
 	unsigned int max_size;  	/* Buffer max capacity */
@@ -31,16 +31,16 @@ int is_full_cbuffer_t ( cbuffer_t* cbuffer );
 int is_empty_cbuffer_t ( cbuffer_t* cbuffer );
 
 /* Inserts an item at the end of the buffer */
-void insert_cbuffer_t ( cbuffer_t* cbuffer, char new_item );
+void insert_cbuffer_t ( cbuffer_t* cbuffer, unsigned int new_item );
 
 /* Inserts nr_items into the buffer */
-void insert_items_cbuffer_t ( cbuffer_t* cbuffer, const char* items, int nr_items);
+void insert_items_cbuffer_t ( cbuffer_t* cbuffer, const unsigned int* items, int nr_items);
 
 /* Removes the first element in the buffer and returns a copy of it */
 char remove_cbuffer_t ( cbuffer_t* cbuffer);
 
 /* Removes nr_items from the buffer and returns a copy of them */
-void remove_items_cbuffer_t ( cbuffer_t* cbuffer, char* items, int nr_items);
+void remove_items_cbuffer_t ( cbuffer_t* cbuffer, unsigned int* items, int nr_items);
 
 /* Removes all items in the buffer */
 void clear_cbuffer_t (cbuffer_t* cbuffer);

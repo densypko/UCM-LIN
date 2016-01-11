@@ -4,6 +4,13 @@
 #include <linux/string.h>
 #include <linux/timer.h>
 
+#include <linux/random.h> 
+#include <linux/vmalloc.h>
+#include <asm-generic/uaccess.h>
+#include <linux/list.h>
+#include <linux/semaphore.h>
+#include "cbuffer.h"
+
 #define BUFFER_LENGTH       100
 #define CBUF_LENGTH			10
 
@@ -29,12 +36,24 @@ int emergency_threshold = 80; // el % de ocupación que provoca la activación d
 static struct proc_dir_entry *proc_entry_modtimer; // entrada de /proc
 static struct proc_dir_entry *proc_entry_modconfig; // entrada de /proc
 
-
+void cleanup(void){
+  struct list_item *item= NULL;
+  struct list_head *cur_node=NULL;
+  struct list_head *aux=NULL;
+  
+  list_for_each_safe(cur_node, aux, &my_list){
+      item=list_entry(cur_node, struct list_item, links);
+      list_del(cur_node);
+      vfree(item);
+ }
 
 /* Work's handler function */ 
 /* La función asociada a la tarea (my_work) volcará los datos del buﬀer a la lista enlazada de enteros */
 static void my_wq_function( struct work_struct *work )
 {
+
+
+	
     printk(KERN_INFO "HELLO WORLD!!\n");
 }
 
@@ -43,17 +62,28 @@ static void my_wq_function( struct work_struct *work )
 /* Function invoked when timer expires (fires) */
 static void fire_timer(unsigned long data)
 {
-	static char flag=0;
-        
-        if (flag==0)
-            printk(KERN_INFO "Tic\n");
-        else
-            printk(KERN_INFO "Tac\n");           
+	unsigned int n;
+
+	get_random_int(&n); 
+
+	/* La operación módulo (%) nos da el resto de dividir n entre max_random. Este resto puede ir de 0 a max_random-1 */
+	n = n % max_random; 
+
+	/* Inserts an item at the end of the buffer */
+	insert_cbuffer_t (cbuffer, n); 
 	
-        flag=~flag;
+	// Hacer cuando llega al porcentaje de ocupación 
+	//if....
+		int cpu_actual = smp_processor_id(); 
+		/* Enqueue work Se puede seleccionar en qué CPU */
+		if (cpu_actual == 0)
+			schedule_work_on(cpu_actual+1, &my_work); 	
+		else
+			schedule_work_on(cpu_actual-1, &my_work);
+	
         
-        /* Re-activate the timer one second from now */
-	mod_timer( &(my_timer), jiffies + HZ); 
+    /* Re-activate the timer one second from now */
+	mod_timer( &(my_timer), jiffies + timer_period); 
 }
 
 
@@ -66,6 +96,28 @@ static void fire_timer(unsigned long data)
 
 static int open_modtimer(struct inode *node, struct file *filp) {
 	
+	cbuffer = create_cbuffer_t(CBUF_LENGTH);	
+		
+	INIT_LIST_HEAD(&my_list);
+
+	/* Create timer */
+	init_timer(&my_timer);
+	/* Initialize field */
+	my_timer.data=0;
+	my_timer.function=fire_timer;
+	my_timer.expires=jiffies + timer_period;  /* Activate it one second from now */
+	/* Activate the timer for the first time */
+	add_timer(&my_timer);		
+
+	/* 
+	Initialize work structure (with function) 
+	Trabajo diferido "la función de la tarea volcara los datos del cbuffer a la lista enlazada  
+	*/
+	INIT_WORK(&my_work, my_wq_function ); 
+
+	/* Incrementar el contador de referencias del modulo */
+	try_module_get(THIS_MODULE); 
+	
 	return 0;
 }
 
@@ -75,7 +127,21 @@ static ssize_t read_modtimer(struct file *filp, char __user *buf, size_t len, lo
 }
 
 static int release_modtimer(struct inode *node, struct file *filp) {
+	
+	destroy_cbuffer_t ( cbuffer );	
+	
+	/* Wait until completion of the timer function (if it's currently running) and delete timer */
+    del_timer_sync(&my_timer);	
+	
+	/*Destruir la lista_enlazada*/
+	cleanup();
 
+	/*Esperar ﬁnalización de todos los trabajos en workqueue por defecto*/
+	flush_scheduled_work(); 
+
+    /* Decrementar el contador de referencias*/
+	module_put(THIS_MODULE);
+	
 	return 0;
 }
 
@@ -138,7 +204,7 @@ static ssize_t read_modconfig(struct file *filp, char __user *buf, size_t len, l
 
 	/* Tell the application that there is nothing left to read  "Para no copiar basura si llamas otra vez" */
 	if ((*off) > 0) 
-      return 0;
+		return 0;
 	
 	list_string += sprintf(list_string, "timer_period_ms=%d\n", timer_period*4);
 	list_string += sprintf(list_string, "max_random=%d\n", max_random);
@@ -147,7 +213,7 @@ static ssize_t read_modconfig(struct file *filp, char __user *buf, size_t len, l
 	nr_bytes = list_string-kbuf;
 	
 	if (len < nr_bytes)
-    return -ENOSPC; //No queda espacio en el dispositivo
+    	return -ENOSPC; //No queda espacio en el dispositivo
   
     /* Transfer data from the kernel to userspace */  
   	if (copy_to_user(buf, kbuf, nr_bytes))
@@ -182,44 +248,25 @@ int init_timer_module( void )
 
 	proc_entry_modtimer = proc_create( "modtimer", 0666, NULL, &proc_entry_modtimer_fops);
 	if (proc_entry_modtimer == NULL) {
-    	ret = -ENOMEM; // No hay bastante espacio
     	printk(KERN_INFO "Modtimer: Can't create /proc entry\n");
+		ret = -ENOMEM; // No hay bastante espacio
   	}else {
     	printk(KERN_INFO "Modtimer: Module loaded\n");
   	}
 	
 	proc_entry_modconfig = proc_create( "modconfig", 0666, NULL, &proc_entry_modconfig_fops); 
 	if (proc_entry_modconfig == NULL) {
-    	ret = -ENOMEM; // No hay bastante espacio
     	printk(KERN_INFO "Modconfig: Can't create /proc entry\n");
+		ret = -ENOMEM; // No hay bastante espacio
   	}else {
     	printk(KERN_INFO "Modconfig: Module loaded\n");
-  	}
-	
-    //////????????????????????????//////////////
-	/* Initialize work structure (with function) */
-	  	INIT_WORK(&my_work, my_wq_function );
+  	}	
 
-	  	/* Enqueue work */
-	  	schedule_work(&my_work);
-
-	
-		/* Create timer */
-		init_timer(&my_timer);
-		/* Initialize field */
-		my_timer.data=0;
-		my_timer.function=fire_timer;
-		my_timer.expires=jiffies + HZ;  /* Activate it one second from now */
-		/* Activate the timer for the first time */
-		add_timer(&my_timer);
- 
     return ret;
 }
 
 
 void cleanup_timer_module( void ){
-	/* Wait until completion of the timer function (if it's currently running) and delete timer */
-    del_timer_sync(&my_timer);
   
 	remove_proc_entry("modtimer", NULL); // eliminar la entrada del /proc
 	printk(KERN_INFO "Modtimer: Module unloaded.\n");
