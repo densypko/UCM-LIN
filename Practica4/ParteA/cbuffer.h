@@ -37,7 +37,7 @@ void insert_cbuffer_t ( cbuffer_t* cbuffer, unsigned int new_item );
 void insert_items_cbuffer_t ( cbuffer_t* cbuffer, const unsigned int* items, int nr_items);
 
 /* Removes the first element in the buffer and returns a copy of it */
-char remove_cbuffer_t ( cbuffer_t* cbuffer);
+unsigned int remove_cbuffer_t ( cbuffer_t* cbuffer);
 
 /* Removes nr_items from the buffer and returns a copy of them */
 void remove_items_cbuffer_t ( cbuffer_t* cbuffer, unsigned int* items, int nr_items);
@@ -46,6 +46,6 @@ void remove_items_cbuffer_t ( cbuffer_t* cbuffer, unsigned int* items, int nr_it
 void clear_cbuffer_t (cbuffer_t* cbuffer);
 
 /* Returns a pointer to the first element in the buffer */
-char* head_cbuffer_t ( cbuffer_t* cbuffer );
+unsigned int* head_cbuffer_t ( cbuffer_t* cbuffer );
 
 #endif
