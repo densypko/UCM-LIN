@@ -44,15 +44,17 @@ static struct proc_dir_entry *proc_entry_modconfig; // entrada de /proc
 //////////////////////// Sincronisación/////////////////////////////////////////////////////////////////////////
 DEFINE_SPINLOCK(sp); // mutex
 unsigned long flags=0; 
-
 DEFINE_SEMAPHORE(s_mtx);
+struct semaphore s_cola;
+int nr_waiting;
 
+int cleanup(void){
 
-void cleanup(void){
 	struct list_item *item= NULL;
 	struct list_head *cur_node=NULL;
 	struct list_head *aux=NULL;
   
+	printk(KERN_INFO "cleanup.\n");
 	if(down_interruptible(&s_mtx)) return -EINTR;
 	list_for_each_safe(cur_node, aux, &my_list){
     	item=list_entry(cur_node, struct list_item, links);
@@ -60,6 +62,8 @@ void cleanup(void){
     	vfree(item);
   	}
 	up(&s_mtx);
+	
+	return 0;
 }
 
 /* Work's handler function */ 
@@ -67,13 +71,18 @@ void cleanup(void){
 static void my_wq_function(struct work_struct *work)
 {
 	struct list_item *item = NULL;
-	//struct list_head *cur_node = NULL;
+
 	int size,i=0;
 	unsigned int aux[CBUF_LENGTH];
+	printk(KERN_INFO "my_wq.\n");
 
 	spin_lock_irqsave(&sp,flags);
 	size=size_cbuffer_t(cbuffer);
+	spin_unlock_irqrestore(&sp,flags);
+	
 	while ( i <  size ){
+
+		spin_lock_irqsave(&sp,flags);
 		aux[i]=remove_cbuffer_t(cbuffer);
 		spin_unlock_irqrestore(&sp,flags);
 
@@ -81,24 +90,25 @@ static void my_wq_function(struct work_struct *work)
     	item->data = aux[i];
 
 		///SEMAFORO s_mtx proteger la lista 
-		if(down_interruptible(&s_mtx)) return -EINTR;
+		if(down_interruptible(&s_mtx)) return;
    		list_add_tail(&item->links, &my_list);
 		up(&s_mtx);
 	 	//SEMAFORO s_mtx proteger la lista
 		i++;
 	}	
 
-	/*
-	i=0;
-
-	while( i < size){
-		item=(struct list_item *) vmalloc(sizeof (struct list_item));
-    	item->data = aux[i];
-   		list_add_tail(&item->links, &my_list);
-		i++;
-	}
-	*/
 	printk(KERN_INFO "%d elements moved from the buffer to the list\n", emergency_threshold/CBUF_LENGTH);
+	
+	if (down_interruptible(&s_mtx)) return; 
+	
+	if (nr_waiting>0) { 
+		/* Despierta a uno de los hilos bloqueados */ 
+		up(&s_cola); 
+		nr_waiting--; 
+	} 	
+	
+	/* "Libera" el mutex */ 
+	up(&s_mtx);
 
 }
 
@@ -107,6 +117,8 @@ static void fire_timer(unsigned long data)
 {
 	unsigned int n;
 	int size;
+	int cpu_actual; 
+	printk(KERN_INFO "fire_timer.\n");
 	/* La operación módulo (%) nos da el resto de dividir n entre max_random. Este resto puede ir de 0 a max_random-1 */
 	n = get_random_int() % max_random; 
 	
@@ -119,11 +131,12 @@ static void fire_timer(unsigned long data)
 	spin_unlock_irqrestore(&sp,flags);
 	
 	printk(KERN_INFO "Generated number: %d\n",n);
+
     //Consultar si un trabajo está pendiente 
 	//work_pending( struct work_struct *work );
 	// Hacer cuando llega al porcentaje de ocupación ?????????????????????
 	if ( size >= (emergency_threshold*CBUF_LENGTH)/100 ){
-		int cpu_actual = smp_processor_id(); 
+		cpu_actual = smp_processor_id(); 
 		/* Enqueue work Se puede seleccionar en qué CPU */
 		if (cpu_actual == 0)
 			schedule_work_on(cpu_actual+1, &my_work); 	
@@ -144,7 +157,8 @@ static void fire_timer(unsigned long data)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static int open_modtimer(struct inode *node, struct file *filp) {
-	
+	printk(KERN_INFO "open_modtimer.\n");	
+	//¿¿¿¿ PROTEGER?????
 	cbuffer = create_cbuffer_t(CBUF_LENGTH);	
 		
 	INIT_LIST_HEAD(&my_list);
@@ -163,6 +177,11 @@ static int open_modtimer(struct inode *node, struct file *filp) {
 	Trabajo diferido "la función de la tarea volcara los datos del cbuffer a la lista enlazada  
 	*/
 	INIT_WORK(&my_work, my_wq_function ); 
+	
+
+
+	nr_waiting=0;
+	sema_init(&s_cola,0);
 
 	/* Incrementar el contador de referencias del modulo */
 	try_module_get(THIS_MODULE); 
@@ -172,26 +191,85 @@ static int open_modtimer(struct inode *node, struct file *filp) {
 
 static ssize_t read_modtimer(struct file *filp, char __user *buf, size_t len, loff_t *off) {
 	
-	return len;
+
+	int nr_bytes;
+	char kbuf[BUFFER_LENGTH] = "";
+	char *list_string = kbuf;
+	
+	struct list_item *item = NULL; 
+    	struct list_head *cur_node = NULL; 
+
+	printk(KERN_INFO "read_modtimer.\n");
+	/* Tell the application that there is nothing left to read  "Para no copiar basura si llamas otra vez" */
+	if ((*off) > 0) 
+		return 0;
+
+	if ( down_interruptible(&s_mtx) )return -EINTR; 
+	
+	while( list_empty(&my_list) ) { 
+
+		printk(KERN_INFO "lista vacía.\n");
+		nr_waiting++;
+		up(&s_mtx); /* "Libera" el mutex */ 
+		/* Se bloquea en la cola */ 
+
+		if ( down_interruptible(&s_cola) ){ 
+			/*Deshacer lo que hemos hecho antes si nos ha despertado alguna señal para dejarlo en un estado correcto*/
+			if ( down_interruptible(&s_mtx) ) return -EINTR;
+			nr_waiting--; 
+			up(&s_mtx); 
+			return -EINTR; 
+		} 
+		/* "Adquiere" el mutex */ 
+		if ( down_interruptible(&s_mtx) ) return -EINTR; 
+	} 
+
+	list_for_each(cur_node, &my_list) { 
+    	/* item points to the structure wherein the links are embedded */ 
+    	item = list_entry(cur_node, struct list_item, links);
+    	list_string += sprintf(list_string, "%d\n", item->data);
+	 }
+
+	/* "Libera" el mutex */ 
+	up(&s_mtx);	
+
+	if(cleanup()!=0)
+		return -1;
+	
+	
+	nr_bytes = list_string-kbuf;
+	
+	if (len < nr_bytes)
+    	return -ENOSPC; //No queda espacio en el dispositivo
+  
+    /* Transfer data from the kernel to userspace */  
+  	if (copy_to_user(buf, kbuf, nr_bytes))
+    	return -EINVAL; //Argumento invalido
+    
+  	(*off)+=len;  /* Update the file pointer */
+	
+
+  	return nr_bytes; 
 }
 
 static int release_modtimer(struct inode *node, struct file *filp) {
-	
+	printk(KERN_INFO "release_modtimer.\n");
 	/*Vaciar el buffer circular*/
 	destroy_cbuffer_t ( cbuffer );	
 	
 	/* Wait until completion of the timer function (if it's currently running) and delete timer */
-    del_timer_sync(&my_timer);	
+    	del_timer_sync(&my_timer);	
 	
 	/*Vaciar(liberar memoria) la lista_enlazada*/
-	cleanup();
+	if( cleanup() != 0 )
+		return -1;
 
 	/*Esperar ﬁnalización de todos los trabajos en workqueue por defecto*/
 	flush_scheduled_work(); 
 
     /* Decrementar el contador de referencias*/
 	module_put(THIS_MODULE);
-	
+
 	return 0;
 }
 
@@ -299,31 +377,31 @@ int init_timer_module( void ){
 
 	proc_entry_modtimer = proc_create( "modtimer", 0666, NULL, &proc_entry_modtimer_fops);
 	if (proc_entry_modtimer == NULL) {
-    	printk(KERN_INFO "Modtimer: Can't create /proc entry\n");
+    	printk(KERN_INFO "Multimod: create /proc/modtimer entry\n");
 		ret = -ENOMEM; // No hay bastante espacio
   	}else {
-    	printk(KERN_INFO "Modtimer: Module loaded\n");
+    	printk(KERN_INFO "Multimod: create /proc/modtimer entry\n");
   	}
 	
 	proc_entry_modconfig = proc_create( "modconfig", 0666, NULL, &proc_entry_modconfig_fops); 
 	if (proc_entry_modconfig == NULL) {
-    	printk(KERN_INFO "Modconfig: Can't create /proc entry\n");
+    	printk(KERN_INFO "Multimod: Can't create /proc/modconfig entry\n");
 		ret = -ENOMEM; // No hay bastante espacio
   	}else {
-    	printk(KERN_INFO "Modconfig: Module loaded\n");
+    	printk(KERN_INFO "Multimod: Can create /proc/modconfig entry\n");
   	}	
 
-    return ret;
+	printk(KERN_INFO "Multimod: Module loaded\n");
+    
+	return ret;
 }
 
 
 void cleanup_timer_module( void ){
   
 	remove_proc_entry("modtimer", NULL); // eliminar la entrada del /proc
-	printk(KERN_INFO "Modtimer: Module unloaded.\n");
-  
 	remove_proc_entry("modconfig", NULL); // eliminar la entrada del /proc
-	printk(KERN_INFO "Modconfig: Module unloaded.\n");
+	printk(KERN_INFO "Multimod: Module unloaded.\n");
 }
 
 module_init( init_timer_module );
