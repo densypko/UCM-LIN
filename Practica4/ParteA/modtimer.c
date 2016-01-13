@@ -47,6 +47,8 @@ unsigned long flags=0;
 DEFINE_SEMAPHORE(s_mtx);
 struct semaphore s_cola;
 int nr_waiting;
+int flag_wq_fin;
+
 
 int cleanup(void){
 
@@ -110,6 +112,8 @@ static void my_wq_function(struct work_struct *work)
 	/* "Libera" el mutex */ 
 	up(&s_mtx);
 
+	flag_wq_fin=1;
+
 }
 
 /* Function invoked when timer expires (fires) */
@@ -132,16 +136,16 @@ static void fire_timer(unsigned long data)
 	
 	printk(KERN_INFO "Generated number: %d\n",n);
 
-    //Consultar si un trabajo está pendiente 
-	//work_pending( struct work_struct *work );
-	// Hacer cuando llega al porcentaje de ocupación ?????????????????????
-	if ( size >= (emergency_threshold*CBUF_LENGTH)/100 ){
+    
+	if ( size >= (emergency_threshold*CBUF_LENGTH)/100 && flag_wq_fin){
 		cpu_actual = smp_processor_id(); 
 		/* Enqueue work Se puede seleccionar en qué CPU */
 		if (cpu_actual == 0)
 			schedule_work_on(cpu_actual+1, &my_work); 	
 		else
 			schedule_work_on(cpu_actual-1, &my_work);
+		
+		flag_wq_fin=0;
 	}
         
     /* Re-activate the timer one second from now */
@@ -177,9 +181,8 @@ static int open_modtimer(struct inode *node, struct file *filp) {
 	Trabajo diferido "la función de la tarea volcara los datos del cbuffer a la lista enlazada  
 	*/
 	INIT_WORK(&my_work, my_wq_function ); 
+	flag_wq_fin=1;
 	
-
-
 	nr_waiting=0;
 	sema_init(&s_cola,0);
 
@@ -201,8 +204,8 @@ static ssize_t read_modtimer(struct file *filp, char __user *buf, size_t len, lo
 
 	printk(KERN_INFO "read_modtimer.\n");
 	/* Tell the application that there is nothing left to read  "Para no copiar basura si llamas otra vez" */
-	if ((*off) > 0) 
-		return 0;
+	//if ((*off) > 0) 
+		//return 0;
 
 	if ( down_interruptible(&s_mtx) )return -EINTR; 
 	
@@ -246,7 +249,7 @@ static ssize_t read_modtimer(struct file *filp, char __user *buf, size_t len, lo
   	if (copy_to_user(buf, kbuf, nr_bytes))
     	return -EINVAL; //Argumento invalido
     
-  	(*off)+=len;  /* Update the file pointer */
+  	//(*off)+=len;  /* Update the file pointer */
 	
 
   	return nr_bytes; 
