@@ -37,4 +37,11 @@ Práctica 3 "Gestión de procesos y sincronización en el kernel"
 
 Práctica 4 "Gestión de interrupciones y trabajos diferidos"
 ===============
+  Familiarizarse con: 
+  
+  	-Mecanismos para diferir el trabajo en el kernel Linux 
+  	
+  	-Temporizadores del kernel 
+  	
+  	-Uso avanzado de mecanismos de sincronización en el kernel
 
